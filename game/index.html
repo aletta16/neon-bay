@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neon Bay — Open World Crime</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a141c;
+    font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; }
+  #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hidden { display: none !important; }
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #money-box { position: absolute; top: 14px; left: 14px; background: rgba(0,0,0,.55);
+    border: 1px solid rgba(255,255,255,.25); border-radius: 8px; padding: 8px 14px; }
+  #money { font-size: 26px; font-weight: 800; color: #7dffb0; letter-spacing: .5px; }
+  #money-label { font-size: 11px; letter-spacing: 2px; color: #cfe8ff; opacity: .8; }
+  #health-box { margin-top: 6px; width: 180px; }
+  #health-bar { height: 10px; background: rgba(255,255,255,.2); border-radius: 5px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: #2ec4b6; }
+  #health-num { font-size: 11px; color: #cfe8ff; }
+  #stars { position: absolute; top: 12px; right: 16px; font-size: 30px; letter-spacing: 4px;
+    color: #ffd400; text-shadow: 0 0 12px rgba(0,0,0,.8); }
+  #wanted-label { position: absolute; top: 46px; right: 18px; font-size: 11px;
+    letter-spacing: 2px; color: #fff; opacity: .75; text-align: right; }
+  #objective-box { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.55); border-left: 4px solid #ffd400; border-radius: 6px;
+    padding: 8px 16px; max-width: 520px; text-align: center; }
+  #objective-title { font-size: 15px; font-weight: 800; color: #ffd400; letter-spacing: 1px; }
+  #objective { font-size: 13px; color: #eaf6ff; margin-top: 2px; }
+  #timer { font-size: 16px; font-weight: 800; color: #ff6b6b; }
+  #minimap-wrap { position: absolute; left: 14px; bottom: 14px; border: 2px solid rgba(255,255,255,.4);
+    border-radius: 50%; overflow: hidden; box-shadow: 0 0 18px rgba(0,0,0,.6); background: #0a141c; }
+  #minimap { display: block; width: 180px; height: 180px; }
+  #minimap-label { position: absolute; left: 14px; bottom: 200px; font-size: 11px;
+    letter-spacing: 2px; color: #fff; text-shadow: 0 1px 3px #000; }
+  #speed-box { position: absolute; right: 18px; bottom: 16px; text-align: right;
+    text-shadow: 0 2px 6px #000; }
+  #speed { font-size: 44px; font-weight: 800; line-height: 1; }
+  #speed-unit { font-size: 12px; letter-spacing: 2px; color: #cfe8ff; }
+  #hint { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; color: #fff; background: rgba(0,0,0,.5); padding: 6px 14px;
+    border-radius: 20px; white-space: nowrap; }
+  #toast { position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+    font-size: 17px; font-weight: 700; color: #fff; background: rgba(0,0,0,.65);
+    border: 1px solid #ffd400; padding: 10px 22px; border-radius: 8px; text-align: center;
+    max-width: 640px; transition: opacity .4s; opacity: 0; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px;
+    margin: -9px 0 0 -9px; display: none; }
+  #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #fff;
+    box-shadow: 0 0 4px #000; }
+  #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
+  #busted-meter { position: absolute; left: 50%; top: 170px; transform: translateX(-50%);
+    width: 260px; display: none; }
+  #busted-meter div { height: 10px; background: rgba(255,255,255,.25); border-radius: 5px; overflow: hidden; }
+  #busted-meter div div { height: 100%; background: #e63946; width: 0; }
+  #busted-meter span { font-size: 12px; letter-spacing: 2px; color: #ffb3b3; }
+  /* ---------- menus ---------- */
+  .menu { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center;
+    justify-content: center; background: linear-gradient(160deg, rgba(10,20,40,.88), rgba(120,20,80,.72));
+    pointer-events: auto; }
+  .menu-card { max-width: 640px; padding: 36px 44px; text-align: center;
+    background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.25); border-radius: 16px; }
+  .menu-card h1 { margin: 0; font-size: 64px; letter-spacing: 4px; font-weight: 900;
+    background: linear-gradient(90deg, #ff2e88, #ffd400, #00e5ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .menu-card h2 { margin: 4px 0 0; font-size: 15px; letter-spacing: 6px; color: #cfe8ff; font-weight: 600; }
+  .menu-card p { font-size: 14px; line-height: 1.6; color: #eaf6ff; }
+  .controls { font-size: 13px; color: #ffd9a0; line-height: 1.9; text-align: left;
+    display: inline-block; margin: 10px 0 18px; }
+  .menu button { pointer-events: auto; cursor: pointer; font-size: 17px; font-weight: 800;
+    letter-spacing: 1px; color: #111; background: #ffd400; border: none; border-radius: 8px;
+    padding: 12px 28px; margin: 4px; }
+  .menu button.secondary { background: rgba(255,255,255,.15); color: #fff;
+    border: 1px solid rgba(255,255,255,.5); }
+  .menu button:hover { filter: brightness(1.15); }
+  .menu h1.small { font-size: 44px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <div id="money-box">
+    <div id="money-label">NEON BAY • UANG</div>
+    <div id="money">$0</div>
+    <div id="health-box"><div id="health-bar"><div id="health-fill"></div></div>
+    <span id="health-num">100</span> HP</div>
+  </div>
+  <div id="stars">☆☆☆☆☆</div>
+  <div id="wanted-label">WANTED • NBPD</div>
+  <div id="objective-box"><div id="objective-title">NEON BAY</div>
+    <div id="objective">Mulai petualanganmu…</div><div id="timer"></div></div>
+  <div id="minimap-label">NEON BAY</div>
+  <div id="minimap-wrap"><canvas id="minimap" width="180" height="180"></canvas></div>
+  <div id="speed-box"><span id="speed">0</span><div id="speed-unit">KM/JAM</div></div>
+  <div id="hint">WASD jalan • Shift lari • E masuk mobil • Klik tembak • Esc jeda</div>
+  <div id="toast"></div>
+  <div id="crosshair"></div>
+  <div id="busted-meter"><span>POLISI MENANGKAPMU…</span><div><div></div></div></div>
+</div>
+
+<div id="menu-start" class="menu">
+  <div class="menu-card">
+    <h1>NEON BAY</h1>
+    <h2>OPEN WORLD • KOTA PANTAI • KEJAHATAN</h2>
+    <p id="start-story"></p>
+    <div class="controls">
+      WASD — jalan / mengemudi &nbsp;•&nbsp; Shift — lari<br>
+      E — curi / masuk &amp; keluar mobil &nbsp;•&nbsp; Mouse drag — putar kamera<br>
+      Klik — tembak (saat jalan kaki) &nbsp;•&nbsp; Esc — jeda / menu<br>
+      Ikuti marker kuning, selesaikan 5 misi, hindari NBPD.
+    </div><br>
+    <button id="btn-start">MULAI BARU</button>
+    <button id="btn-continue" class="secondary">LANJUTKAN SAVE</button>
+  </div>
+</div>
+
+<div id="menu-pause" class="menu hidden">
+  <div class="menu-card">
+    <h1 class="small">JEDA</h1>
+    <p id="pause-stats"></p>
+    <button id="btn-resume">LANJUT MAIN</button>
+    <button id="btn-restart" class="secondary">ULANG MISI</button>
+    <button id="btn-quit" class="secondary">SIMPAN &amp; KELUAR</button>
+  </div>
+</div>
+
+<div id="menu-busted" class="menu hidden">
+  <div class="menu-card">
+    <h1 class="small">BUSTED!</h1>
+    <p>NBPD menangkap Kai. Denda $200 dipotong dari uangmu.</p>
+    <p id="busted-stats"></p>
+    <button id="btn-busted">BEBAS &amp; LANJUT</button>
+  </div>
+</div>
+
+<div id="menu-wasted" class="menu hidden">
+  <div class="menu-card">
+    <h1 class="small">WASTED</h1>
+    <p>Kai tumbang di jalanan Neon Bay. Bangkit dan coba lagi.</p>
+    <p id="wasted-stats"></p>
+    <button id="btn-wasted">BANGKIT LAGI</button>
+  </div>
+</div>
+
+<div id="menu-complete" class="menu hidden">
+  <div class="menu-card">
+    <h1 class="small">NEON BAY MILIKMU!</h1>
+    <p>Kai melunasi utang kakaknya. Lima misi selesai — kota ini sekarang milikmu.</p>
+    <p id="complete-stats"></p>
+    <button id="btn-complete">JELAJAHI KOTA</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
